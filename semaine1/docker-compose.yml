@@ -1,0 +1,20 @@
+services:
+  mon_environnement_pytorch:
+    build: .
+    # L'équivalent de --shm-size=16g
+    shm_size: '16gb'
+    # L'équivalent des -v (chemins relatifs par rapport à l'emplacement du docker-compose.yml)
+    volumes:
+      - ./code:/workspace/code
+      - ./data:/workspace/data
+    # Permet de garder le conteneur interactif (équivalent de -it)
+    stdin_open: true
+    tty: true
+    # Configuration indispensable pour que Docker Compose utilise votre GPU NVIDIA
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
