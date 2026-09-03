@@ -1,0 +1,55 @@
+import torch
+import torch.nn as nn
+from Test4_EncodeurtypeJEPA import Encodeur_IJEPA
+
+
+# 1. On définit le Predictor (souvent un petit Transformer plus léger que l'encodeur)
+class PredictorIJEPA(nn.Module):
+    def __init__(self, dim=256):
+        super().__init__()
+        # Pour faire simple, un bloc d'attention simplifié ou un MLP pour le Predictor
+        self.couche_prediction = nn.Sequential(
+            nn.Linear(dim, dim),
+            nn.GELU(),
+            nn.Linear(dim, dim)
+        )
+
+    def forward(self, contexte_encode, masques_cibles):
+        # Le predictor combine le contexte et essaie de prédire les cibles
+        # (Dans la vraie version I-JEPA, il y a aussi de l'attention croisée ici)
+        prediction = self.couche_prediction(contexte_encode)
+        return prediction
+
+# --- SIMULATION DE L'ENTRAÎNEMENT ---
+
+# On instancie nos modèles
+encodeur = Encodeur_IJEPA(dim=256, num_heads=8, profondeur=4)
+predictor = PredictorIJEPA(dim=256)
+
+# L'optimiseur (AdamW) qui va mettre à jour les poids des deux modèles en même temps
+parametres_a_entrainer = list(encodeur.parameters()) + list(predictor.parameters())
+optimiseur = torch.optim.AdamW(parametres_a_entrainer, lr=0.001)
+
+# La fonction de perte : Mean Squared Error (distance entre prédiction et réalité)
+fonction_de_perte = nn.MSELoss()
+
+# Simulation d'un batch de données
+contexte_visible = torch.rand(2, 50, 256)   # 2 images, 50 patches visibles
+vraie_cible = torch.rand(2, 50, 256)        # Ce que l'encodeur a vu sur les parties cachées
+
+# --- LA BOUCLE D'APPRENTISSAGE (1 étape) ---
+
+# A. Le modèle prédit
+representation_contexte = encodeur(contexte_visible)
+prediction_cible = predictor(representation_contexte, None)
+
+# B. On calcule l'erreur (Loss)
+loss = fonction_de_perte(prediction_cible, vraie_cible)
+print(f"Erreur (Loss) actuelle : {loss.item():.4f}")
+
+# C. La rétropropagation (Le cœur de PyTorch)
+optimiseur.zero_grad() # On remet les compteurs de gradient à zéro
+loss.backward()        # PyTorch calcule l'erreur pour chaque poids
+optimiseur.step()      # L'optimiseur ajuste les poids pour faire baisser l'erreur
+
+print("Poids mis à jour avec succès !")
