@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  ijepa:
+    build: .
+    container_name: ijepa_train_container
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - WANDB_API_KEY=${WANDB_API_KEY}
+    volumes:
+      - .:/workspace
+    shm_size: '32gb'
+    command: sleep infinity

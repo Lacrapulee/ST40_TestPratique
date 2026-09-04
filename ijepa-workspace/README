@@ -1,0 +1,7 @@
+ijepa-workspace/
+├── data/                 # Vos datasets (ex: ImageNet ou sous-ensemble)
+├── configs/              # Fichiers de configuration YAML d'I-JEPA
+├── wandb/                # Dossier de cache local pour Weights & Biases
+├── Dockerfile            # Image personnalisée avec PyTorch et WandB
+├── docker-compose.yml    # Orchestration du conteneur avec support GPU
+└── ijepa/                # Clone du dépôt officiel facebookresearch/ijepa
