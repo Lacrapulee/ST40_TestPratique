@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  vjepa:
+    build: .
+    container_name: vjepa_container
+    runtime: nvidia
+    ipc: host
+    tty: true
+    stdin_open: true
+    volumes:
+      - .:/workspace
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - WANDB_API_KEY=${WANDB_API_KEY}
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

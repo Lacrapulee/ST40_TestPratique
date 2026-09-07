@@ -1,0 +1,69 @@
+import torch
+import torch.nn as nn
+
+print("=== 1. CRÉATION D'UNE VIDÉO BRUTE ===")
+# Paramètres de la vidéo
+batch_size = 2
+channels = 3       # RGB
+num_frames = 16    # 16 images consécutives (Temps / T)
+height = 224       # Hauteur en pixels (H)
+width = 224        # Largeur en pixels (W)
+
+# Création d'un tenseur représentant un batch de 2 vidéos
+# Format PyTorch pour la vidéo : (Batch, Canaux, Temps, Hauteur, Largeur)
+video = torch.randn(batch_size, channels, num_frames, height, width)
+print(f"Forme de la vidéo d'entrée : {video.shape}")
+print(f"Signification : [Batch={batch_size}, Canaux={channels}, Temps={num_frames} frames, Hauteur={height}px, Largeur={width}px]\n")
+
+
+print("=== 2. DÉCOUPAGE EN CUBES SPATIO-TEMPORELS (Patchs 3D) ===")
+# On définit la taille d'un cube (patch) :
+t_patch_size = 2   # Regroupe 2 frames d'affilée
+h_patch_size = 16  # 16 pixels de haut
+w_patch_size = 16  # 16 pixels de large
+embed_dim = 256    # Dimension cachée (le 'dim' de votre code I-JEPA)
+
+# Une Convolution 3D avec kernel_size = stride = taille du patch 
+# permet de faire exactement ce découpage et de projeter chaque cube en un vecteur de taille 'embed_dim'
+patch_embed = nn.Conv3d(
+    in_channels=channels,
+    out_channels=embed_dim,
+    kernel_size=(t_patch_size, h_patch_size, w_patch_size),
+    stride=(t_patch_size, h_patch_size, w_patch_size)
+)
+
+x = patch_embed(video)
+print(f"Forme après la Conv3D (cubes extraits) : {x.shape}")
+# Calcul du nombre de tokens générés :
+# Temps : 16 / 2 = 8 blocs temporels
+# Hauteur : 224 / 16 = 14 blocs en hauteur
+# Largeur : 224 / 16 = 14 blocs en largeur
+# Total tokens = 8 * 14 * 14 = 1568 tokens par vidéo
+print(f"Signification : [Batch={batch_size}, Embed_Dim={embed_dim}, T_tokens={num_frames // t_patch_size}, H_tokens={height // h_patch_size}, W_tokens={width // w_patch_size}]\n")
+
+
+print("=== 3. APLATISSEMENT (FLATTENING) DE LA VIDÉO EN SÉQUENCE 1D ===")
+# Le Transformer ne comprend pas les grilles 3D (T, H, W). Il veut une séquence 1D de tokens : (Batch, Nombre_Total_de_Tokens, Dimension)
+B, D, T_tok, H_tok, W_tok = x.shape
+
+# On fusionne les dimensions T, H, W en une seule dimension de longueur de séquence
+x = x.flatten(2) # Aplatit à partir de la dimension 2 (laisse Batch et Embed_Dim tranquilles)
+print(f"Forme après flatten(2) : {x.shape}")
+print(f"Signification : [Batch={B}, Embed_Dim={D}, Total_Tokens={T_tok * H_tok * W_tok}]")
+
+# On permute pour placer la dimension des tokens au milieu (format standard des Transformers en PyTorch)
+x = x.transpose(1, 2)
+print(f"Forme après transposition : {x.shape}")
+print(f"Signification : [Batch={B}, Total_Tokens={x.shape[1]}, Embed_Dim={x.shape[2]}]\n")
+
+
+print("=== 4. AJOUT DE L'EMBEDDING POSITIONNEL SPATIO-TEMPOREL ===")
+# Puisque l'étape d'aplatissement a "mélangé" l'ordre spatial et temporel dans une longue ligne 1D,
+# le modèle a besoin de savoir d'où venait chaque token (quelle frame ? quelle position x, y ?).
+# On crée un vecteur d'embedding positionnel pour chaque position de token.
+total_tokens = x.shape[1]
+pos_embedding = nn.Parameter(torch.randn(1, total_tokens, embed_dim))
+
+# On l'additionne simplement aux tokens de la vidéo
+x = x + pos_embedding
+print(f"Forme finale prête à entrer dans votre `IJEPAEncoder` : {x.shape}")
