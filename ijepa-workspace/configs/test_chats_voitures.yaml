@@ -1,12 +1,12 @@
 data:
-  batch_size: 4
+  batch_size: 64
   color_jitter_strength: 0.0
   crop_scale:
     - 0.3
     - 1.0
   crop_size: 224
   image_folder: ""
-  num_workers: 2
+  num_workers: 4
   pin_mem: true
   root_path: /workspace/data
   use_color_distortion: false
@@ -48,7 +48,7 @@ optimization:
   ema:
     - 0.996
     - 1.0
-  epochs: 10
+  epochs: 50
   final_lr: 1.0e-06
   final_weight_decay: 0.4
   ipe_scale: 1.0
